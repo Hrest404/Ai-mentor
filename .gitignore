@@ -1,0 +1,26 @@
+# deps / build
+node_modules/
+.next/
+out/
+dist/
+coverage/
+
+# env & secrets
+.env
+.env.*
+!.env.example
+
+# local db
+*.db
+*.db-journal
+local.db*
+
+# skill working dirs
+.taste-skill/
+shots/
+
+# misc
+.DS_Store
+*.log
+*.tsbuildinfo
+next-env.d.ts
