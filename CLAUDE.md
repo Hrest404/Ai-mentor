@@ -74,6 +74,7 @@ SaaS AI-mentor for English (IELTS prep). Stack and plan: see `Tasks.md`.
 - Mark a checklist item `[x]` only after it is done and verified; otherwise leave `[ ]` with the reason.
 - UI follows the `taste` skill (`.claude/skills/taste/`) once installed (stage 1).
 - Talk to the owner in Russian. UI text is Russian, learning content is English.
+- Never run `npm run build` while the dev server is running: both write to `.next` and the dev server breaks with "Internal Server Error". Stop the dev server first, or delete `.next` and restart it after.
 - Never enter or print API keys; the owner fills `.env.local` themselves.
 
 Source of the guidelines above: https://github.com/multica-ai/andrej-karpathy-skills/blob/main/CLAUDE.md
