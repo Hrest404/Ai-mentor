@@ -1,0 +1,157 @@
+import { bs, ch, fb, li, tr, type TopicDef } from "../types";
+
+// «—» в вариантах означает «без артикля».
+export const articles: TopicDef = {
+  id: "articles",
+  title: "Articles: a, an, the",
+  titleRu: "Артикли",
+  description: "Когда нужен a или an, когда the, а когда артикль не ставится.",
+  level: "A2",
+  track: "general",
+  theory: {
+    intro:
+      "Артикль показывает, о каком предмете речь: о каком-то одном из многих (a, an) или о конкретном, известном собеседнику (the). В русском артиклей нет, поэтому тема требует практики.",
+    sections: [
+      {
+        heading: "A или an",
+        body: "Неопределённый артикль ставится перед исчисляемым существительным в единственном числе. Выбор зависит от первого звука следующего слова, а не от буквы: перед согласным звуком a, перед гласным an.",
+        examples: [
+          { en: "She is an engineer.", ru: "Она инженер." },
+          { en: "He works at a university.", ru: "Он работает в университете (первый звук [j], согласный)." },
+          { en: "I waited for an hour.", ru: "Я ждал час (h не произносится)." },
+        ],
+      },
+      {
+        heading: "A, an или the",
+        body: "Впервые упоминаем предмет: a или an. Говорим о нём снова или он понятен из ситуации: the. The также ставится перед единственными в своём роде предметами и перед превосходной степенью.",
+        examples: [
+          { en: "I saw a film. The film was boring.", ru: "Я посмотрел фильм. Фильм был скучный." },
+          { en: "Can you close the door?", ru: "Можешь закрыть дверь? (понятно, какую)" },
+          { en: "The sun rises in the east.", ru: "Солнце встаёт на востоке." },
+          { en: "This is the best restaurant in the city.", ru: "Это лучший ресторан в городе." },
+        ],
+      },
+      {
+        heading: "Без артикля",
+        body: "Артикль не нужен, когда говорим о чём-то в общем (с неисчисляемыми и множественным числом), а также с языками, приёмами пищи и в выражениях go to work, go to bed, at home.",
+        examples: [
+          { en: "I love music.", ru: "Я люблю музыку." },
+          { en: "Cats are independent animals.", ru: "Кошки — независимые животные." },
+          { en: "We had lunch at one o'clock.", ru: "Мы пообедали в час." },
+        ],
+      },
+      {
+        heading: "Географические названия",
+        body: "Города и большинство стран идут без артикля. The нужен с реками, морями, океанами, горными цепями и со странами, в названии которых есть States, Kingdom, Republic или множественное число.",
+        examples: [
+          { en: "London is a big city.", ru: "Лондон — большой город." },
+          { en: "They live in the United States.", ru: "Они живут в США." },
+          { en: "We sailed down the Nile.", ru: "Мы плыли по Нилу." },
+        ],
+        table: {
+          headers: ["С the", "Без артикля"],
+          rows: [
+            ["the United Kingdom, the Netherlands", "France, Japan, Russia"],
+            ["the Thames, the Pacific Ocean", "London, Paris"],
+            ["the Alps", "Mount Everest, Lake Baikal"],
+          ],
+        },
+      },
+    ],
+    tips: [
+      "A hour — ошибка: слушайте первый звук, а не смотрите на букву.",
+      "Профессия в единственном числе всегда с a или an: He is a doctor.",
+      "In the morning, in the afternoon, in the evening, но at night.",
+    ],
+  },
+  lessons: [
+    {
+      key: "p1",
+      type: "practice",
+      title: "A или an",
+      exercises: [
+        ch("art-a-an", "She is ___ engineer.", ["a", "an", "—"], "an",
+          "Engineer начинается с гласного звука, а профессия требует неопределённого артикля: an."),
+        ch("art-a-an", "He works at ___ university.", ["a", "an", "—"], "a",
+          "University начинается с согласного звука [j], поэтому a."),
+        fb("art-a-an", "I waited for ___ hour.", ["an"],
+          "В hour буква h не произносится, первый звук гласный: an hour."),
+        ch("art-a-an", "It's ___ useful book.", ["a", "an", "—"], "a",
+          "Useful начинается со звука [j]: a useful book."),
+        fb("art-a-an", "My sister is ___ doctor.", ["a"],
+          "Профессия в единственном числе: a doctor."),
+      ],
+    },
+    {
+      key: "p2",
+      type: "practice",
+      title: "A, an или the",
+      exercises: [
+        ch("art-the", "I saw a film yesterday. ___ film was boring.", ["A", "The", "An", "—"], "The",
+          "Фильм уже упоминался, теперь он конкретный: the film."),
+        ch("art-the", "Can you close ___ door, please?", ["a", "the", "an", "—"], "the",
+          "Из ситуации понятно, о какой двери речь."),
+        fb("art-the", "___ sun rises in the east.", ["The"],
+          "Солнце единственное в своём роде: the sun."),
+        ch("art-a-an", "I have ___ dog and two cats.", ["a", "an", "—"], "a",
+          "Собака упоминается впервые, она одна из многих: a dog."),
+        bs("art-the", "Это лучший ресторан в городе.", "This is the best restaurant in the city", ["a"],
+          "Перед превосходной степенью ставится the: the best."),
+      ],
+    },
+    {
+      key: "p3",
+      type: "practice",
+      title: "Когда артикль не нужен",
+      exercises: [
+        ch("art-zero", "I love ___ music.", ["a", "the", "—"], "—",
+          "Музыка вообще, неисчисляемое существительное: без артикля."),
+        ch("art-zero", "She goes to ___ work by bus.", ["a", "the", "—"], "—",
+          "Устойчивое выражение go to work идёт без артикля."),
+        ch("art-zero", "We had ___ lunch at one o'clock.", ["a", "the", "—"], "—",
+          "Приёмы пищи обычно без артикля: have lunch."),
+        ch("art-zero", "___ cats are independent animals.", ["A", "The", "—"], "—",
+          "Говорим о кошках вообще, множественное число: без артикля."),
+        ch("art-zero", "He speaks ___ Spanish very well.", ["a", "the", "—"], "—",
+          "Названия языков идут без артикля."),
+      ],
+    },
+    {
+      key: "p4",
+      type: "practice",
+      title: "Географические названия и устойчивые выражения",
+      exercises: [
+        ch("art-geo", "They live in ___ United States.", ["a", "the", "—"], "the",
+          "В названии есть States: the United States."),
+        ch("art-geo", "___ London is a big city.", ["A", "The", "—"], "—",
+          "Названия городов идут без артикля."),
+        ch("art-geo", "We sailed down ___ Nile.", ["a", "the", "—"], "the",
+          "Названия рек всегда с the."),
+        ch("art-fixed", "I usually run in ___ morning.", ["a", "the", "—"], "the",
+          "Устойчивое выражение: in the morning."),
+        li("art-a-an", "My brother is a pilot. He flies to the United States twice a month.",
+          "What is the brother's job?", ["A pilot", "A doctor", "A driver", "A teacher"], "A pilot",
+          "В тексте: My brother is a pilot."),
+      ],
+    },
+    {
+      key: "test",
+      type: "test",
+      title: "Итоговый тест: артикли",
+      exercises: [
+        ch("art-a-an", "It was ___ honest mistake.", ["a", "an", "—"], "an",
+          "В honest буква h не произносится, первый звук гласный: an honest mistake."),
+        ch("art-the", "I bought a shirt and a tie. ___ shirt was expensive.", ["A", "The", "—"], "The",
+          "Рубашка уже упоминалась: the shirt."),
+        ch("art-zero", "___ life is short.", ["A", "The", "—"], "—",
+          "Жизнь вообще, абстрактное понятие: без артикля."),
+        fb("art-the", "What's ___ capital of France?", ["the"],
+          "У Франции одна столица, предмет единственный: the capital."),
+        ch("art-the", "He is ___ best player in the team.", ["a", "the", "—"], "the",
+          "Превосходная степень: the best."),
+        tr("art-a-an", "У меня есть идея.", ["I have an idea", "I've got an idea", "I have got an idea"],
+          "Idea начинается с гласного звука: an idea."),
+      ],
+    },
+  ],
+};

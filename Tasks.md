@@ -13,7 +13,7 @@
 |---|------|--------|
 | 0 | Tasks.md | выполнен (2026-11-13) |
 | 1 | Скилл taste, каркас проекта, дизайн-система | выполнен (2026-11-13) |
-| 2 | База данных: схема, миграции, сид | не начат |
+| 2 | База данных: схема, миграции, сид | выполнен (2026-11-13) |
 | 3 | Регистрация, вход, защита ЛК | не начат |
 | 4 | Лендинг и страница тарифов | не начат |
 | 5 | Ядро обучения: карта курса, уроки, упражнения | не начат |
@@ -56,20 +56,23 @@
 ---
 
 ## Этап 2. База данных: схема, миграции, сид
-**Статус:** не начат
+**Статус:** выполнен (2026-11-13)
 **Цель:** вся структура данных в Turso/libsql и стартовый учебный контент.
 
-- [ ] Клиент БД `src/db/index.ts`: локально `file:local.db`, в проде `TURSO_DATABASE_URL` + `TURSO_AUTH_TOKEN`
-- [ ] Схема `src/db/schema.ts`: users, sessions, accounts, subscriptions, topics, lessons, exercises, lesson_progress, attempts, mistakes, daily_usage, user_stats (XP, серия), phrases, phrase_favorites, ielts_submissions, chat_messages
-- [ ] Индексы и внешние ключи
-- [ ] Миграции drizzle-kit, скрипты `db:generate`, `db:migrate`, `db:seed`
-- [ ] Контент: 6 тем (Present Simple, Present Continuous, Past Simple, Articles, Future forms, IELTS Writing Task 2 basics) — теория, 4–6 уроков, итоговый тест в каждой
-- [ ] ~150 упражнений семи типов с правильными ответами и пояснениями
-- [ ] Разговорник: ~120 фраз в 8 ситуациях с переводом
-- [ ] Вычитка контента: проверить каждое упражнение на корректность ответа
-- [ ] Сид идемпотентный (повторный запуск не плодит дубликаты)
+- [x] Клиент БД `src/db/index.ts`: локально `file:local.db`, в проде `TURSO_DATABASE_URL` + `TURSO_AUTH_TOKEN`
+- [x] Схема `src/db/schema.ts`: 19 таблиц: user, session, account, verification (имена под better-auth), profiles, user_stats, subscriptions, topics, lessons, exercises, lesson_progress, attempts, mistakes, daily_usage, phrase_situations, phrases, phrase_favorites, chat_messages, ielts_submissions
+- [x] Индексы и внешние ключи
+- [x] Миграции drizzle-kit, скрипты `db:generate`, `db:migrate`, `db:seed`
+- [x] Контент: 6 тем (Present Simple, Present Continuous, Past Simple, Articles, Future forms, IELTS Writing Task 2 basics) — теория, 4–6 уроков, итоговый тест в каждой
+- [x] 156 упражнений семи типов с правильными ответами и пояснениями на русском
+- [x] Разговорник: 120 фраз в 8 ситуациях с переводом (2 ситуации открыты для Free)
+- [x] Вычитка контента: все упражнения перечитаны, 5 неоднозначных исправлены; автопроверка `validateExercise` (ответ есть среди вариантов, один пропуск, однозначные пары) встроена в тесты и в сид
+- [x] Сид идемпотентный (повторный запуск не плодит дубликаты)
 
 **Готово, когда:** `npm run db:migrate && npm run db:seed` на чистой базе создаёт все таблицы и контент; выборочные запросы показывают ожидаемое количество тем, уроков, упражнений, фраз.
+
+**Проверено:** `npm test` (12 тестов), `typecheck`, `lint`, `build` без ошибок. На чистой локальной базе `db:migrate` + `db:seed` дважды: 6 тем, 36 уроков, 156 упражнений, 8 ситуаций, 120 фраз, дубликатов нет. То же применено к базе Turso: 19 таблиц, 18 индексов, упражнений без урока нет.
+**Заметки:** первые 7 уроков (лимит Free) = вся тема Present Simple + теория Present Continuous. Сид только добавляет и обновляет строки по стабильным id; удалённое из контента упражнение из базы само не исчезнет. Контент лежит в `src/content/`, после правок: `npm run db:seed`.
 
 ---
 
