@@ -15,6 +15,13 @@
       "when": 1794825222838,
       "tag": "0001_profile_timezone",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1794827070871,
+      "tag": "0002_ai_cache_and_chat",
+      "breakpoints": true
     }
   ]
 }

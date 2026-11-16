@@ -316,7 +316,31 @@ export const phraseFavorites = sqliteTable(
   (t) => [primaryKey({ columns: [t.userId, t.phraseId] })],
 );
 
+/* ───────────── AI ───────────── */
+
+/** Общий кеш разборов ошибок: одинаковая ошибка (то же упражнение и тот же ответ) разбирается моделью один раз. */
+export const aiExplanationCache = sqliteTable("ai_explanation_cache", {
+  key: text("key").primaryKey(), // sha256(упражнение | нормализованный ответ)
+  payload: text("payload", { mode: "json" }).notNull(),
+  model: text("model").notNull(),
+  createdAt: createdAt(),
+});
+
 /* ───────────── PRO: чат и IELTS ───────────── */
+
+export const chatConversations = sqliteTable(
+  "chat_conversations",
+  {
+    id: id(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    scenario: text("scenario").notNull(), // id сценария из src/lib/chat-scenarios.ts
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [index("chat_conv_user_idx").on(t.userId, t.updatedAt)],
+);
 
 export const chatMessages = sqliteTable(
   "chat_messages",

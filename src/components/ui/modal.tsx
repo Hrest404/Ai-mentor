@@ -37,7 +37,7 @@ export function Modal({
         if (e.target === ref.current) onClose();
       }}
       className={cn(
-        "m-auto w-[min(92vw,32rem)] rounded-xl border border-line bg-surface p-0 text-ink shadow-card",
+        "m-auto max-h-[90dvh] w-[min(92vw,32rem)] overflow-y-auto rounded-xl border border-line bg-surface p-0 text-ink shadow-card",
         className,
       )}
     >

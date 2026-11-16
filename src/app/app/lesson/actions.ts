@@ -1,19 +1,19 @@
 "use server";
 
-import { and, eq, gt, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import type { BatchItem } from "drizzle-orm/batch";
 import { z } from "zod";
 import { db } from "@/db";
-import { attempts, dailyUsage, lessonProgress, mistakes, profiles, userStats } from "@/db/schema";
+import { attempts, lessonProgress, mistakes, profiles, userStats } from "@/db/schema";
 import { verifyLessonToken } from "@/lib/access-token";
 import { answerToText, checkAnswer } from "@/lib/answers";
 import { exercisesOfLesson, getExercise, getLesson, getTopic, lessonsOfTopic, nextTopic } from "@/lib/course-index";
 import { PASS_SCORE, xpForResult } from "@/lib/course-state";
-import { WINDOW_MS, chargeSeconds, isOverGrace, isPracticeExhausted, lessonAllowedForPlan } from "@/lib/limits";
+import { chargeSeconds, isOverGrace, isPracticeExhausted, lessonAllowedForPlan } from "@/lib/limits";
 import { loadCourseView } from "@/lib/progress";
 import { getAccount, requireUser } from "@/lib/session";
 import { isValidTimeZone, localDate, nextStreak } from "@/lib/streak";
-import { getUsage } from "@/lib/usage";
+import { finishPracticeCharge, getUsage, practiceChargeQuery } from "@/lib/usage";
 
 type Batch = [BatchItem<"sqlite">, ...BatchItem<"sqlite">[]];
 
@@ -79,11 +79,7 @@ export async function checkExercise(raw: unknown): Promise<CheckResponse> {
 
   const queries: Batch = [
     // Время практики: прибавляем к действующему суточному окну и сразу читаем итог.
-    db
-      .update(dailyUsage)
-      .set({ practiceSeconds: sql`${dailyUsage.practiceSeconds} + ${charge}` })
-      .where(and(eq(dailyUsage.userId, user.id), gt(dailyUsage.windowStart, new Date(now.getTime() - WINDOW_MS))))
-      .returning({ practiceSeconds: dailyUsage.practiceSeconds }),
+    practiceChargeQuery(user.id, charge, now),
     db.insert(attempts).values({
       id: attemptId,
       userId: user.id,
@@ -121,12 +117,7 @@ export async function checkExercise(raw: unknown): Promise<CheckResponse> {
   const results = (await db.batch(queries)) as unknown[];
 
   // Первый ответ в новом окне: окна ещё нет, создаём его, отсчёт 24 часов идёт отсюда.
-  const updated = results[0] as { practiceSeconds: number }[];
-  let used = updated[0]?.practiceSeconds;
-  if (used === undefined) {
-    await db.insert(dailyUsage).values({ userId: user.id, windowStart: now, practiceSeconds: charge });
-    used = charge;
-  }
+  const used = await finishPracticeCharge(user.id, results[0] as { practiceSeconds: number }[], charge, now);
 
   if (isOverGrace(plan, used)) {
     const usage = await getUsage(user.id);

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { checkExercise, finishLesson, type FinishResponse } from "@/app/app/lesson/actions";
 import { Badge } from "@/components/ui/badge";
 import { Countdown } from "@/components/gate/countdown";
+import { ExplainButton } from "@/components/mistakes/explain-button";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { PASS_SCORE } from "@/lib/course-state";
@@ -239,6 +240,11 @@ export function LessonPlayer({ lessonId, lessonTitle, topicTitle, lessonType, ex
                   </p>
                 )}
                 <p>{feedback.explanation}</p>
+                {!feedback.correct && (
+                  <div className="pt-2">
+                    <ExplainButton exerciseId={ex.id} variant="secondary" className="bg-surface" />
+                  </div>
+                )}
               </>
             )}
           </div>
