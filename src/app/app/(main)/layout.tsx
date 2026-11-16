@@ -4,6 +4,7 @@ import { AppNav } from "@/components/app-nav";
 import { SignOutButton } from "@/components/sign-out-button";
 import { Badge } from "@/components/ui/badge";
 import { getAccount, requireUser } from "@/lib/session";
+import { effectiveStreak, localDate } from "@/lib/streak";
 
 export default async function MainLayout({
   children,
@@ -11,6 +12,7 @@ export default async function MainLayout({
   const user = await requireUser();
   const { profile, stats, subscription } = await getAccount(user.id);
   if (!profile.onboardedAt) redirect("/app/onboarding");
+  const streak = effectiveStreak(stats, localDate(new Date(), profile.timezone));
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-6xl flex-col px-4">
@@ -20,7 +22,7 @@ export default async function MainLayout({
         </Link>
         <div className="flex items-center gap-2">
           <Badge tone="xp" title="Серия дней подряд">
-            {stats.streak} дн.
+            {streak} дн.
           </Badge>
           <Badge tone="xp" title="Очки опыта">
             {stats.xp} XP

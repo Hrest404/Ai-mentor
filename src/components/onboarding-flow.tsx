@@ -59,7 +59,13 @@ export function OnboardingFlow({ name, questions }: { name: string; questions: Q
     setSaving(true);
     setError(null);
     try {
-      setResult(await completeOnboarding({ goal, answers: finalAnswers }));
+      setResult(
+        await completeOnboarding({
+          goal,
+          answers: finalAnswers,
+          tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        }),
+      );
       setStep("result");
     } catch {
       setError("Не получилось сохранить. Проверьте соединение и попробуйте ещё раз.");

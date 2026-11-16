@@ -97,6 +97,7 @@ export const profiles = sqliteTable("profiles", {
   targetBand: real("target_band"),
   examDate: text("exam_date"), // YYYY-MM-DD
   dailyGoalMinutes: integer("daily_goal_minutes").notNull().default(15),
+  timezone: text("timezone").notNull().default("UTC"), // IANA, например Europe/Moscow: по нему считаются сутки и серия
   onboardedAt: integer("onboarded_at", { mode: "timestamp" }),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
