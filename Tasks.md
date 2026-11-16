@@ -39,7 +39,7 @@
 - [x] Скилл из GitHub `Leonxlnx/taste-skill` (вся папка, 38 МБ) установлен в `.claude/skills/design-taste-frontend/` (имя из его же хука), SKILL.md прочитан целиком, скрипты просмотрены на сетевые вызовы. Заметка: скилл рассчитан на сайты-витрины и имеет Stop-хук `gate.mjs`; для приложения применяем его принципы, полный цикл (deal/gate) — на этапе 4 (лендинг)
 - [x] `git init`, `.gitignore` (в т.ч. `.env*`, `local.db`)
 - [x] Создать проект Next.js 15 (App Router, TypeScript, Tailwind, ESLint, `src/`)
-- [x] Установить зависимости: Drizzle, `@libsql/client`, better-auth, `@anthropic-ai/sdk`, stripe, framer-motion, zod, vitest
+- [x] Установить зависимости: Drizzle, `@libsql/client`, better-auth, `@anthropic-ai/sdk` (позже убран: AI-провайдер заменён на Gemini), stripe, framer-motion, zod, vitest
 - [x] Дизайн-токены по скиллу taste: палитра (светлая и тёмная темы, один акцент teal, без фиолетового), шрифт Onest (кириллица), радиусы, тени, `prefers-reduced-motion` — `src/app/globals.css`
 - [x] Базовые UI-компоненты: Button, Input, Card, Badge, Progress, Modal, Toast
 - [x] Группы маршрутов `(marketing)`, `(auth)`, `app` с пустыми layout
@@ -168,9 +168,9 @@
 ## Этап 7. AI: разбор ошибок, повторение, чат-ментор
 **Статус:** не начат
 **Цель:** ментор объясняет ошибки и помогает их отработать.
-**Нужен ключ:** `ANTHROPIC_API_KEY` в `.env.local` (вписывает владелец).
+**Нужен ключ:** `GEMINI_API_KEY` в `.env.local` (вписывает владелец; получить в Google AI Studio). AI-провайдер: Gemini (заменил Claude по решению владельца 2026-11-16).
 
-- [ ] Клиент Claude `src/lib/ai/`: выбор модели по задаче, таймауты, обработка ошибок, заглушка при отсутствии ключа
+- [ ] Клиент Gemini `src/lib/ai/` (пакет `@google/genai`, ставится на этом этапе; актуальные имена моделей сверить по документации): быстрая модель для объяснений, диалогов и квизов, более сильная для проверки эссе IELTS; структурированный JSON-ответ со схемой; таймауты, обработка ошибок, заглушка при отсутствии ключа
 - [ ] Объяснение ошибки: почему неверно, правило, пример; ответ в строгом JSON с проверкой zod
 - [ ] Генерация 3 похожих заданий на отработку ошибки
 - [ ] Кеширование объяснений в БД (одинаковая ошибка не оплачивается дважды)
@@ -256,7 +256,7 @@
 
 ## Справка
 
-**Стек:** Next.js 15 (App Router, TypeScript) · Tailwind CSS · Framer Motion · Turso (`@libsql/client`) + Drizzle ORM · better-auth · Claude API (`@anthropic-ai/sdk`) · Stripe · Vitest.
+**Стек:** Next.js 15 (App Router, TypeScript) · Tailwind CSS · Framer Motion · Turso (`@libsql/client`) + Drizzle ORM · better-auth · Gemini API (`@google/genai`) · Stripe · Vitest.
 Интерфейс на русском, учебный контент на английском.
 
 **Тарифы**
@@ -264,4 +264,4 @@
 - **PRO:** без лимитов; произношение, грамматика и правописание, чат-ментор, IELTS Writing и Speaking, персональный план под дату экзамена, умное повторение, еженедельный отчёт, заморозка серии, полный разговорник.
 
 **Переменные окружения** (вписывает владелец в `.env.local`):
-`ANTHROPIC_API_KEY`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_ID`, `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `BETTER_AUTH_SECRET`.
+`GEMINI_API_KEY`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_ID`, `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `BETTER_AUTH_SECRET`.
