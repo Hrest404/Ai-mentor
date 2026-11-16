@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import type { CourseLesson, CourseTopic } from "@/lib/course-index";
 import { PASS_SCORE, type LessonState, type TopicView } from "@/lib/course-state";
+import { lessonAllowedForPlan, type Plan } from "@/lib/limits";
 import { cn } from "@/lib/cn";
 
 const TYPE_LABEL = { theory: "Теория", practice: "Урок", test: "Итоговый тест" } as const;
@@ -43,9 +44,11 @@ const STATE_TEXT: Record<LessonState, string> = { completed: "пройден", a
 export function CourseMap({
   views,
   nextLessonId,
+  plan,
 }: {
   views: TopicView<CourseTopic, CourseLesson>[];
   nextLessonId: string | null;
+  plan: Plan;
 }) {
   return (
     <div className="flex flex-col gap-8">
@@ -84,7 +87,9 @@ export function CourseMap({
 
               <ul className="flex flex-col">
                 {v.lessons.map(({ lesson, state, bestScore }) => {
-                  const isNext = lesson.id === nextLessonId;
+                  // Free: уроки после лимита закрыты тарифом; ссылка ведёт на экран «доступно в PRO».
+                  const paywalled = !lessonAllowedForPlan(plan, lesson.globalOrder);
+                  const isNext = lesson.id === nextLessonId && !paywalled;
                   const row = (
                     <>
                       <StateIcon state={state} />
@@ -94,9 +99,10 @@ export function CourseMap({
                         </span>
                         <span className="block text-sm text-muted">
                           {TYPE_LABEL[lesson.type]}
-                          <span className="sr-only">, {STATE_TEXT[state]}</span>
+                          <span className="sr-only">, {paywalled ? "доступен в PRO" : STATE_TEXT[state]}</span>
                         </span>
                       </span>
+                      {paywalled && <Badge tone="action">PRO</Badge>}
                       {state === "completed" && bestScore !== null && lesson.type !== "theory" && (
                         <Badge tone="success">{bestScore}%</Badge>
                       )}
@@ -110,7 +116,7 @@ export function CourseMap({
                   const base = "flex min-h-16 items-center gap-4 border-t border-line px-6 py-3";
                   return (
                     <li key={lesson.id}>
-                      {state === "locked" ? (
+                      {state === "locked" && !paywalled ? (
                         <div className={cn(base, "opacity-70")}>{row}</div>
                       ) : (
                         <Link

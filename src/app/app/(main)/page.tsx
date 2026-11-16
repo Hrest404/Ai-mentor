@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { lessonAllowedForPlan } from "@/lib/limits";
 import { loadCourseView, practiceMinutesToday } from "@/lib/progress";
 import { getAccount, requireUser } from "@/lib/session";
 import { effectiveStreak, localDate } from "@/lib/streak";
@@ -22,7 +23,7 @@ function plural(n: number, one: string, few: string, many: string) {
 
 export default async function DashboardPage() {
   const user = await requireUser();
-  const { profile, stats } = await getAccount(user.id);
+  const { profile, stats, plan } = await getAccount(user.id);
   const [{ views, next }, minutes] = await Promise.all([
     loadCourseView(user.id, profile.level),
     practiceMinutesToday(user.id, profile.timezone),
@@ -32,6 +33,8 @@ export default async function DashboardPage() {
   const goal = profile.dailyGoalMinutes;
   const goalDone = minutes >= goal;
   const startedAny = views.some((v) => v.completedCount > 0);
+  // Free: все доступные уроки пройдены, следующий закрыт тарифом.
+  const needsPro = next !== null && !lessonAllowedForPlan(plan, next.lesson.globalOrder);
 
   return (
     <div className="flex flex-col gap-8">
@@ -44,7 +47,18 @@ export default async function DashboardPage() {
       </div>
 
       <Card className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-        {next ? (
+        {needsPro ? (
+          <>
+            <div className="flex min-w-0 flex-col gap-1">
+              <p className="text-sm font-medium text-muted">Бесплатные уроки пройдены</p>
+              <h2 className="text-2xl">Дальше курс продолжается в PRO</h2>
+              <p className="text-muted">Остальные уроки, проверка речи и текстов, IELTS и чат-ментор.</p>
+            </div>
+            <ButtonLink href="/pricing" size="lg" className="shrink-0">
+              Смотреть тариф PRO
+            </ButtonLink>
+          </>
+        ) : next ? (
           <>
             <div className="flex min-w-0 flex-col gap-1">
               <p className="text-sm font-medium text-muted">{startedAny ? "Продолжить" : "Начните с первого урока"}</p>

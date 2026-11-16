@@ -6,6 +6,7 @@ import { cache } from "react";
 import { db } from "@/db";
 import { profiles, subscriptions, userStats } from "@/db/schema";
 import { auth } from "./auth";
+import { effectivePlan } from "./limits";
 
 /** Сессия текущего запроса (или null). Кешируется на время одного рендера. */
 export const getSession = cache(async () => auth.api.getSession({ headers: await headers() }));
@@ -33,5 +34,5 @@ export const getAccount = cache(async (userId: string) => {
     await db.insert(subscriptions).values({ userId, plan: "free" }).onConflictDoNothing();
     [profile, stats, subscription] = await load();
   }
-  return { profile: profile!, stats: stats!, subscription: subscription! };
+  return { profile: profile!, stats: stats!, subscription: subscription!, plan: effectivePlan(subscription) };
 });

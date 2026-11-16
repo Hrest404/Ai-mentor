@@ -7,7 +7,7 @@ export const metadata: Metadata = { title: "Обучение" };
 
 export default async function LearnPage() {
   const user = await requireUser();
-  const { profile } = await getAccount(user.id);
+  const { profile, plan } = await getAccount(user.id);
   const { views, next } = await loadCourseView(user.id, profile.level);
 
   return (
@@ -18,7 +18,7 @@ export default async function LearnPage() {
           В каждой теме теория, четыре урока и итоговый тест. Результат теста от 80% открывает следующую тему.
         </p>
       </div>
-      <CourseMap views={views} nextLessonId={next?.lesson.id ?? null} />
+      <CourseMap views={views} nextLessonId={next?.lesson.id ?? null} plan={plan} />
     </div>
   );
 }

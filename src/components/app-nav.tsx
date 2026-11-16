@@ -9,13 +9,14 @@ const ITEMS = [
   { href: "/app/learn", label: "Обучение", icon: "M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2zM19 19v2H6M8 7h7M8 11h7" },
   { href: "/app/mistakes", label: "Ошибки", icon: "M12 3 2.5 20h19zM12 10v4M12 17h.01" },
   { href: "/app/phrasebook", label: "Разговорник", icon: "M4 5h16v11H9l-5 4zM8 9h8M8 12h5" },
+  { href: "/app/pro", label: "PRO", icon: "M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.8 6.8 19.6l1-5.8-4.3-4.1 5.9-.9z" },
   { href: "/app/profile", label: "Профиль", icon: "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0" },
 ] as const;
 
 /** Навигация кабинета: боковая на широком экране, нижняя панель на телефоне. */
 export function AppNav({ variant }: { variant: "side" | "bottom" }) {
   const pathname = usePathname();
-  const isActive = (href: string) => (href === "/app" ? pathname === "/app" : pathname.startsWith(href));
+  const isActive = (href: string) => (href === "/app" ? pathname === "/app" : pathname === href || pathname.startsWith(`${href}/`));
 
   return (
     <nav

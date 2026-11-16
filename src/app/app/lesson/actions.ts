@@ -1,16 +1,19 @@
 "use server";
 
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, gt, inArray, sql } from "drizzle-orm";
 import type { BatchItem } from "drizzle-orm/batch";
 import { z } from "zod";
 import { db } from "@/db";
-import { attempts, lessonProgress, mistakes, profiles, userStats } from "@/db/schema";
+import { attempts, dailyUsage, lessonProgress, mistakes, profiles, userStats } from "@/db/schema";
+import { verifyLessonToken } from "@/lib/access-token";
 import { answerToText, checkAnswer } from "@/lib/answers";
 import { exercisesOfLesson, getExercise, getLesson, getTopic, lessonsOfTopic, nextTopic } from "@/lib/course-index";
 import { PASS_SCORE, xpForResult } from "@/lib/course-state";
+import { WINDOW_MS, chargeSeconds, isOverGrace, isPracticeExhausted, lessonAllowedForPlan } from "@/lib/limits";
 import { loadCourseView } from "@/lib/progress";
 import { getAccount, requireUser } from "@/lib/session";
 import { isValidTimeZone, localDate, nextStreak } from "@/lib/streak";
+import { getUsage } from "@/lib/usage";
 
 type Batch = [BatchItem<"sqlite">, ...BatchItem<"sqlite">[]];
 
@@ -21,6 +24,8 @@ const answerSchema = z.union([
 ]);
 
 const checkInput = z.object({
+  /** Токен доступа, выданный страницей урока после проверки тарифа, замков и лимитов. */
+  token: z.string().max(2000),
   lessonId: z.string().max(100),
   exerciseId: z.string().max(120),
   answer: answerSchema,
@@ -28,8 +33,16 @@ const checkInput = z.object({
 });
 
 export type CheckResponse =
-  | { ok: true; attemptId: string; correct: boolean; correctAnswer: string; explanation: string }
-  | { ok: false; error: string };
+  | {
+      ok: true;
+      attemptId: string;
+      correct: boolean;
+      correctAnswer: string;
+      explanation: string;
+      /** Лимит практики Free исчерпан: этот урок можно закончить, новый уже нет. */
+      limitReached: boolean;
+    }
+  | { ok: false; error: string; code?: "limit" | "expired" | "forbidden"; resetsAtMs?: number };
 
 /**
  * Проверяет один ответ на сервере и записывает попытку. Неверный ответ попадает в «Мои ошибки».
@@ -39,19 +52,38 @@ export async function checkExercise(raw: unknown): Promise<CheckResponse> {
   const user = await requireUser();
   const parsed = checkInput.safeParse(raw);
   if (!parsed.success) return { ok: false, error: "Некорректный запрос" };
-  const { lessonId, exerciseId, answer, timeMs } = parsed.data;
+  const { token, lessonId, exerciseId, answer, timeMs } = parsed.data;
+
+  // Замки, пейволл и лимит уже проверены при входе в урок: без подписанного токена ответ не принимается.
+  const access = verifyLessonToken(token, { userId: user.id, lessonId });
+  if (!access.ok) {
+    return access.reason === "expired"
+      ? { ok: false, code: "expired", error: "Сессия урока устарела. Обновите страницу и начните урок заново." }
+      : { ok: false, code: "forbidden", error: "Нет доступа к этому уроку" };
+  }
+  const plan = access.plan;
 
   const ex = getExercise(exerciseId);
   const lesson = getLesson(lessonId);
   if (!ex || !lesson || ex.lessonId !== lessonId || lesson.type === "theory") {
     return { ok: false, error: "Упражнение не найдено" };
   }
+  if (!lessonAllowedForPlan(plan, lesson.globalOrder)) {
+    return { ok: false, code: "forbidden", error: "Урок доступен в PRO" };
+  }
 
   const result = checkAnswer(ex.def, answer);
   const attemptId = crypto.randomUUID();
   const now = new Date();
+  const charge = chargeSeconds(timeMs);
 
   const queries: Batch = [
+    // Время практики: прибавляем к действующему суточному окну и сразу читаем итог.
+    db
+      .update(dailyUsage)
+      .set({ practiceSeconds: sql`${dailyUsage.practiceSeconds} + ${charge}` })
+      .where(and(eq(dailyUsage.userId, user.id), gt(dailyUsage.windowStart, new Date(now.getTime() - WINDOW_MS))))
+      .returning({ practiceSeconds: dailyUsage.practiceSeconds }),
     db.insert(attempts).values({
       id: attemptId,
       userId: user.id,
@@ -86,14 +118,27 @@ export async function checkExercise(raw: unknown): Promise<CheckResponse> {
         }),
     );
   }
-  await db.batch(queries);
+  const results = (await db.batch(queries)) as unknown[];
 
+  // Первый ответ в новом окне: окна ещё нет, создаём его, отсчёт 24 часов идёт отсюда.
+  const updated = results[0] as { practiceSeconds: number }[];
+  let used = updated[0]?.practiceSeconds;
+  if (used === undefined) {
+    await db.insert(dailyUsage).values({ userId: user.id, windowStart: now, practiceSeconds: charge });
+    used = charge;
+  }
+
+  if (isOverGrace(plan, used)) {
+    const usage = await getUsage(user.id);
+    return { ok: false, code: "limit", error: "Лимит практики на сегодня исчерпан", resetsAtMs: usage.resetsAt?.getTime() };
+  }
   return {
     ok: true,
     attemptId,
     correct: result.correct,
     correctAnswer: result.correctAnswer,
     explanation: ex.def.explanation,
+    limitReached: isPracticeExhausted(plan, used),
   };
 }
 
@@ -159,7 +204,8 @@ export async function finishLesson(raw: unknown): Promise<FinishResponse> {
   const lesson = getLesson(lessonId);
   if (!lesson || lesson.type === "theory") return { ok: false, error: "Урок не найден" };
 
-  const { profile } = await getAccount(user.id);
+  const { profile, plan } = await getAccount(user.id);
+  if (!lessonAllowedForPlan(plan, lesson.globalOrder)) return { ok: false, error: "Урок доступен в PRO" };
   const { progress, views } = await loadCourseView(user.id, profile.level);
   const topicView = views.find((v) => v.topic.id === lesson.topicId);
   const lessonView = topicView?.lessons.find((l) => l.lesson.id === lessonId);
@@ -254,7 +300,8 @@ export async function completeTheory(raw: unknown): Promise<TheoryResponse> {
   const lesson = getLesson(lessonId);
   if (!lesson || lesson.type !== "theory" || !getTopic(lesson.topicId)) return { ok: false, error: "Урок не найден" };
 
-  const { profile } = await getAccount(user.id);
+  const { profile, plan } = await getAccount(user.id);
+  if (!lessonAllowedForPlan(plan, lesson.globalOrder)) return { ok: false, error: "Урок доступен в PRO" };
   const { progress, views } = await loadCourseView(user.id, profile.level);
   const lessonView = views.find((v) => v.topic.id === lesson.topicId)?.lessons.find((l) => l.lesson.id === lessonId);
   if (!lessonView || lessonView.state === "locked") return { ok: false, error: "Тема пока закрыта" };

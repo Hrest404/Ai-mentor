@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { checkExercise, finishLesson, type FinishResponse } from "@/app/app/lesson/actions";
 import { Badge } from "@/components/ui/badge";
+import { Countdown } from "@/components/gate/countdown";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { PASS_SCORE } from "@/lib/course-state";
@@ -27,6 +27,8 @@ interface Props {
   topicTitle: string;
   lessonType: "practice" | "test";
   exercises: ClientExercise[];
+  /** Подписанный токен доступа к уроку: без него сервер не принимает ответы. */
+  token: string;
 }
 
 type Phase = "answer" | "checking" | "feedback" | "finishing" | "done";
@@ -40,8 +42,7 @@ type Summary = Extract<FinishResponse, { ok: true }>;
 
 const MAX_TIME_MS = 10 * 60 * 1000;
 
-export function LessonPlayer({ lessonId, lessonTitle, topicTitle, lessonType, exercises }: Props) {
-  const router = useRouter();
+export function LessonPlayer({ lessonId, lessonTitle, topicTitle, lessonType, exercises, token }: Props) {
   const total = exercises.length;
   const [index, setIndex] = useState(0);
   const [phase, setPhase] = useState<Phase>("answer");
@@ -51,6 +52,10 @@ export function LessonPlayer({ lessonId, lessonTitle, topicTitle, lessonType, ex
   const [attemptIds, setAttemptIds] = useState<string[]>([]);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [error, setError] = useState<string | null>(null);
+  /** Лимит исчерпан в середине урока: этот урок ещё можно закончить. */
+  const [limitNote, setLimitNote] = useState(false);
+  /** Дальше заниматься нельзя: лимит или доступ закончились. */
+  const [blocked, setBlocked] = useState<{ message: string; resetsAtMs?: number } | null>(null);
   const shownAt = useRef(0);
 
   const ex = exercises[index];
@@ -68,12 +73,21 @@ export function LessonPlayer({ lessonId, lessonTitle, topicTitle, lessonType, ex
     setError(null);
     try {
       const res = await checkExercise({
+        token,
         lessonId,
         exerciseId: ex.id,
         answer: toServerAnswer(ex, value),
         timeMs: Math.min(MAX_TIME_MS, Math.max(0, Date.now() - shownAt.current)),
       });
-      if (!res.ok) throw new Error(res.error);
+      if (!res.ok) {
+        if (res.code) {
+          setBlocked({ message: res.error, resetsAtMs: res.resetsAtMs });
+          setPhase("answer");
+          return;
+        }
+        throw new Error(res.error);
+      }
+      if (res.limitReached) setLimitNote(true);
       setFeedback({ correct: res.correct, correctAnswer: res.correctAnswer, explanation: res.explanation });
       setResults((r) => [...r, { exercise: ex, correct: res.correct, correctAnswer: res.correctAnswer, explanation: res.explanation }]);
       setAttemptIds((a) => [...a, res.attemptId]);
@@ -82,7 +96,7 @@ export function LessonPlayer({ lessonId, lessonTitle, topicTitle, lessonType, ex
       setError("Не получилось проверить ответ. Проверьте соединение и попробуйте ещё раз.");
       setPhase("answer");
     }
-  }, [phase, ex, value, lessonId]);
+  }, [phase, ex, value, lessonId, token]);
 
   const finish = useCallback(
     async (ids: string[]) => {
@@ -93,13 +107,14 @@ export function LessonPlayer({ lessonId, lessonTitle, topicTitle, lessonType, ex
         if (!res.ok) throw new Error(res.error);
         setSummary(res);
         setPhase("done");
-        router.refresh();
+        // Без router.refresh(): повторный рендер страницы урока подменил бы экран итогов экраном лимита.
+        // Кабинет и так читает свежие данные при переходе.
       } catch {
         setError("Не получилось сохранить результат. Нажмите «Повторить», ответы не потеряны.");
         setPhase("feedback");
       }
     },
-    [lessonId, router],
+    [lessonId],
   );
 
   const next = useCallback(() => {
@@ -150,6 +165,29 @@ export function LessonPlayer({ lessonId, lessonTitle, topicTitle, lessonType, ex
     );
   }
 
+  if (blocked) {
+    return (
+      <main className="mx-auto flex min-h-dvh w-full max-w-xl flex-col justify-center gap-6 px-4 py-12">
+        <h1 className="text-3xl">{blocked.message}</h1>
+        {blocked.resetsAtMs ? (
+          <p className="text-lg">
+            Практика откроется снова через <Countdown resetsAtMs={blocked.resetsAtMs} />. PRO снимает дневной лимит.
+          </p>
+        ) : (
+          <p className="text-lg">Откройте урок заново из карты курса.</p>
+        )}
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <ButtonLink href="/pricing" size="lg">
+            Смотреть тариф PRO
+          </ButtonLink>
+          <ButtonLink href="/app/learn" variant="secondary" size="lg">
+            К карте курса
+          </ButtonLink>
+        </div>
+      </main>
+    );
+  }
+
   const locked = phase !== "answer";
   return (
     <div className="flex min-h-dvh flex-col">
@@ -185,6 +223,11 @@ export function LessonPlayer({ lessonId, lessonTitle, topicTitle, lessonType, ex
         <div className="mx-auto flex w-full max-w-2xl flex-col gap-4 px-4 py-4">
           <div role="status" aria-live="polite" className="flex flex-col gap-1">
             {error && <p className="font-medium text-danger">{error}</p>}
+            {limitNote && (
+              <p className="text-sm font-medium text-muted">
+                Дневной лимит практики исчерпан. Этот урок можно закончить, новые откроются после сброса.
+              </p>
+            )}
             {feedback && (
               <>
                 <p className={cn("text-xl font-medium", feedback.correct ? "text-success" : "text-danger")}>
