@@ -1,8 +1,30 @@
-import { forwardRef, type ButtonHTMLAttributes } from "react";
+import Link from "next/link";
+import { forwardRef, type ButtonHTMLAttributes, type ComponentProps } from "react";
 import { cn } from "@/lib/cn";
 
 type Variant = "primary" | "secondary" | "ghost" | "danger";
-type Size = "md" | "lg";
+type Size = "md" | "lg" | "xl";
+
+export function buttonClasses(variant: Variant = "primary", size: Size = "md", className?: string) {
+  return cn(
+    "inline-flex items-center justify-center gap-2 rounded-md font-medium",
+    "transition-[background-color,transform,opacity] duration-150 active:translate-y-px",
+    "disabled:cursor-not-allowed disabled:opacity-50",
+    variants[variant],
+    sizes[size],
+    className,
+  );
+}
+
+/** Ссылка в виде кнопки: тот же вид, что у <Button>. */
+export function ButtonLink({
+  variant,
+  size,
+  className,
+  ...props
+}: ComponentProps<typeof Link> & { variant?: Variant; size?: Size }) {
+  return <Link className={buttonClasses(variant, size, className)} {...props} />;
+}
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant;
@@ -22,6 +44,7 @@ const variants: Record<Variant, string> = {
 const sizes: Record<Size, string> = {
   md: "min-h-11 px-5 text-base", // 44px: минимальная цель касания
   lg: "min-h-12 px-6 text-lg",
+  xl: "min-h-14 px-8 text-xl",
 };
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
@@ -34,14 +57,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         ref={ref}
         disabled={disabled || loading}
         aria-busy={loading || undefined}
-        className={cn(
-          "inline-flex items-center justify-center gap-2 rounded-md font-medium",
-          "transition-[background-color,transform,opacity] duration-150 active:translate-y-px",
-          "disabled:cursor-not-allowed disabled:opacity-50",
-          variants[variant],
-          sizes[size],
-          className,
-        )}
+        className={buttonClasses(variant, size, className)}
         {...props}
       >
         {loading && (

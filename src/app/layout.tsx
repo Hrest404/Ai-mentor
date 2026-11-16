@@ -10,13 +10,24 @@ const onest = Onest({
   display: "swap",
 });
 
+// Канонический адрес сайта (для Open Graph). До выбора домена остаётся локальным.
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: {
     default: "Репетитор: AI-ментор по английскому",
     template: "%s · Репетитор",
   },
   description:
     "Персональный AI-ментор по английскому: уроки, разбор ошибок, разговорник и подготовка к IELTS.",
+  openGraph: {
+    type: "website",
+    locale: "ru_RU",
+    siteName: "Репетитор",
+    images: [{ url: "/share.png", width: 1200, height: 630, alt: "Репетитор: AI-ментор по английскому" }],
+  },
+  twitter: { card: "summary_large_image" },
 };
 
 export const viewport: Viewport = {
