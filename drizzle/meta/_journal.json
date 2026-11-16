@@ -22,6 +22,27 @@
       "when": 1794827070871,
       "tag": "0002_ai_cache_and_chat",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1794852070462,
+      "tag": "0003_streak_freeze_week",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1794853204972,
+      "tag": "0004_stripe_events",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1794853366745,
+      "tag": "0005_xp_events_weekly_reports",
+      "breakpoints": true
     }
   ]
 }

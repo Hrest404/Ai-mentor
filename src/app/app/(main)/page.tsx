@@ -7,7 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { lessonAllowedForPlan } from "@/lib/limits";
 import { loadCourseView, practiceMinutesToday } from "@/lib/progress";
 import { getAccount, requireUser } from "@/lib/session";
-import { effectiveStreak, localDate } from "@/lib/streak";
+import { effectiveStreak, localDate, weekStart } from "@/lib/streak";
 
 export const metadata: Metadata = { title: "Кабинет" };
 
@@ -29,7 +29,10 @@ export default async function DashboardPage() {
     practiceMinutesToday(user.id, profile.timezone),
   ]);
 
-  const streak = effectiveStreak(stats, localDate(new Date(), profile.timezone));
+  const today = localDate(new Date(), profile.timezone);
+  const streak = effectiveStreak(stats, today);
+  // На новой неделе заморозка выдаётся с первой активностью; пока она не выдана, считаем её доступной.
+  const freezeLeft = stats.freezeWeek !== weekStart(today) || stats.streakFreezes > 0;
   const goal = profile.dailyGoalMinutes;
   const goalDone = minutes >= goal;
   const startedAny = views.some((v) => v.completedCount > 0);
@@ -99,6 +102,11 @@ export default async function DashboardPage() {
           <p className="text-muted">
             {streak > 0 ? `Рекорд: ${Math.max(stats.longestStreak, streak)}` : "Позанимайтесь сегодня, чтобы начать серию"}
           </p>
+          {plan === "pro" && (
+            <Badge tone={freezeLeft ? "action" : "neutral"} className="w-fit">
+              {freezeLeft ? "Заморозка серии есть" : "Заморозка на этой неделе использована"}
+            </Badge>
+          )}
         </Card>
         <Card className="flex flex-col gap-3">
           <p className="text-sm text-muted">Опыт</p>

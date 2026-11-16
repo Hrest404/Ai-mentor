@@ -17,7 +17,7 @@ export default async function ProHubPage() {
         <h1 className="text-3xl">Инструменты PRO</h1>
         <p className="text-muted">
           {plan === "pro"
-            ? "Все инструменты открыты. Они появляются по мере готовности."
+            ? "Все инструменты открыты."
             : "Эти инструменты входят в тариф PRO."}
         </p>
       </div>

@@ -108,7 +108,7 @@ describe("runWithFallback", () => {
 describe("modelsFor", () => {
   it("по умолчанию свои цепочки, переменные окружения переопределяют", () => {
     expect(modelsFor("fast", {})[0]).toBe("gemini-3.5-flash-lite");
-    expect(modelsFor("chat", {})[0]).toBe("gemini-3.5-flash");
+    expect(modelsFor("chat", {})[0]).toBe("gemini-3.5-flash-lite");
     expect(modelsFor("fast", { GEMINI_MODEL_FAST: " x-model , y-model " })).toEqual(["x-model", "y-model"]);
     expect(modelsFor("fast", { GEMINI_MODEL_FAST: " " })).toEqual(modelsFor("fast", {}));
   });

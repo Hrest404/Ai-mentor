@@ -112,6 +112,7 @@ export const userStats = sqliteTable("user_stats", {
   longestStreak: integer("longest_streak").notNull().default(0),
   lastActiveDate: text("last_active_date"), // YYYY-MM-DD
   streakFreezes: integer("streak_freezes").notNull().default(0),
+  freezeWeek: text("freeze_week"), // понедельник недели (YYYY-MM-DD), за которую выдана заморозка
   updatedAt: updatedAt(),
 });
 
@@ -326,6 +327,46 @@ export const aiExplanationCache = sqliteTable("ai_explanation_cache", {
   createdAt: createdAt(),
 });
 
+/* ───────────── Оплата ───────────── */
+
+/** Обработанные события Stripe: повторная доставка того же события ничего не меняет. */
+export const stripeEvents = sqliteTable("stripe_events", {
+  id: text("id").primaryKey(), // evt_...
+  type: text("type").notNull(),
+  createdAt: createdAt(),
+});
+
+/* ───────────── Статистика и отчёты ───────────── */
+
+/** Журнал начисления XP: по нему строится динамика. Старые начисления до появления журнала в нём отсутствуют. */
+export const xpEvents = sqliteTable(
+  "xp_events",
+  {
+    id: id(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    amount: integer("amount").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [index("xp_events_user_created_idx").on(t.userId, t.createdAt)],
+);
+
+/** Еженедельный AI-отчёт (PRO): один на пользователя и неделю, чтобы повторный просмотр не тратил запрос к модели. */
+export const weeklyReports = sqliteTable(
+  "weekly_reports",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    weekStart: text("week_start").notNull(), // понедельник, YYYY-MM-DD
+    payload: text("payload", { mode: "json" }).notNull(),
+    model: text("model").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.weekStart] })],
+);
+
 /* ───────────── PRO: чат и IELTS ───────────── */
 
 export const chatConversations = sqliteTable(
@@ -364,7 +405,7 @@ export const ieltsSubmissions = sqliteTable(
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
-    task: text("task", { enum: ["writing1", "writing2", "speaking1", "speaking2", "speaking3"] }).notNull(),
+    task: text("task", { enum: ["writing1", "writing2", "speaking1", "speaking2", "speaking3", "speaking"] }).notNull(),
     prompt: text("prompt").notNull(),
     response: text("response").notNull(),
     wordCount: integer("word_count"),

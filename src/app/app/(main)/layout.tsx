@@ -19,6 +19,9 @@ export default async function MainLayout({
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-6xl flex-col px-4">
+      <a href="#content" className="skip-link">
+        К содержанию
+      </a>
       <header className="flex min-h-16 items-center justify-between gap-4 border-b border-line">
         <Link href="/app" className="text-xl font-semibold tracking-tight">
           Репетитор
@@ -57,7 +60,9 @@ export default async function MainLayout({
       <div className="flex flex-1 gap-8 py-8">
         <AppNav variant="side" />
         {/* нижний отступ на телефоне: место под нижнюю панель */}
-        <main className="min-w-0 flex-1 pb-20 md:pb-0">{children}</main>
+        <main id="content" tabIndex={-1} className="min-w-0 flex-1 pb-20 outline-none md:pb-0">
+          {children}
+        </main>
       </div>
       <AppNav variant="bottom" />
     </div>

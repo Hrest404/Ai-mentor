@@ -13,8 +13,11 @@ export type Tier = "fast" | "chat" | "strong";
 
 const DEFAULTS: Record<Tier, string[]> = {
   fast: ["gemini-3.5-flash-lite", "gemini-3.5-flash", "gemini-3.1-flash-lite"],
-  chat: ["gemini-3.5-flash", "gemini-3.5-flash-lite"],
-  strong: ["gemini-3.6-flash", "gemini-3.5-flash"],
+  // 3.5-flash отвечает 503 или молчит 20-35 с, поэтому первой идёт lite (первый фрагмент за ~1 с).
+  chat: ["gemini-3.5-flash-lite", "gemini-3.5-flash"],
+  // 3.6-flash при проверке отвечала 40-60 с или молчала до таймаута, поэтому первой идёт lite (около 2 с), сильная только запасной.
+  // Когда нагрузка на API спадёт, вернуть сильную модель первой: GEMINI_MODEL_STRONG=gemini-3.6-flash,gemini-3.5-flash-lite.
+  strong: ["gemini-3.5-flash-lite", "gemini-3.6-flash"],
 };
 
 export function modelsFor(tier: Tier, env: Record<string, string | undefined> = process.env): string[] {
@@ -55,6 +58,10 @@ export interface JsonRequest<T> {
   temperature?: number;
   timeoutMs?: number;
   maxOutputTokens?: number;
+  /** Общий срок на всю цепочку моделей, мс (по умолчанию 30 с). */
+  deadlineMs?: number;
+  /** Повторов на одну модель при временном сбое (по умолчанию 1). */
+  retriesPerModel?: number;
 }
 
 /** Один структурированный ответ: JSON по схеме, проверенный zod. */
@@ -86,7 +93,7 @@ export async function generateJson<T>(req: JsonRequest<T>): Promise<{ data: T; m
       if (!checked.success) throw aiBadResponse("Ответ модели не прошёл проверку", checked.error);
       return checked.data;
     },
-    { deadlineMs: 30_000 },
+    { deadlineMs: req.deadlineMs ?? 30_000, retriesPerModel: req.retriesPerModel },
   );
   return { data: value, model };
 }

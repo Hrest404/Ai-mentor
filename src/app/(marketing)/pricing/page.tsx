@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { COMPARISON, FREE_FEATURES, PRO_FEATURES, PRO_PRICE } from "@/lib/plans";
+import { getProPriceLabel } from "@/lib/stripe";
 
 export const metadata: Metadata = {
   title: { absolute: "Тарифы Репетитора: Free и PRO" },
@@ -32,8 +33,10 @@ function Features({ items }: { items: string[] }) {
   );
 }
 
-export default function PricingPage() {
-  const price = PRO_PRICE ? `${PRO_PRICE.amount} ${PRO_PRICE.currency} ${PRO_PRICE.period}` : "Цена уточняется";
+export default async function PricingPage() {
+  // Цена берётся из Stripe, чтобы страница и оплата не расходились; без Stripe остаётся запасной вариант.
+  const price =
+    (await getProPriceLabel()) ?? (PRO_PRICE ? `${PRO_PRICE.amount} ${PRO_PRICE.currency} ${PRO_PRICE.period}` : "Цена уточняется");
 
   return (
     <>
@@ -64,7 +67,7 @@ export default function PricingPage() {
                   <p className="text-xl font-medium">{price}</p>
                 </div>
                 <Features items={PRO_FEATURES} />
-                <ButtonLink href="/register" variant="secondary">
+                <ButtonLink href="/app/billing" variant="secondary">
                   Выбрать PRO
                 </ButtonLink>
               </Card>

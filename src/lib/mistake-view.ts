@@ -41,3 +41,18 @@ export function weakestTags(rows: { tag: string; resolvedAt: Date | null; timesW
   }
   return [...by.values()].sort((a, b) => b.active - a.active || b.times - a.times || a.tag.localeCompare(b.tag)).slice(0, limit);
 }
+
+/**
+ * Умное повторение: активные ошибки из двух самых слабых категорий независимо от срока.
+ * Сначала те, в которых ученик ошибался чаще, затем из младших коробок.
+ */
+export function weakReviewQueue<T extends { tag: string; resolvedAt: Date | null; timesWrong: number; box: number }>(
+  rows: T[],
+  limit = 10,
+): T[] {
+  const tags = new Set(weakestTags(rows, 2).map((t) => t.tag));
+  return rows
+    .filter((r) => !r.resolvedAt && tags.has(r.tag))
+    .sort((a, b) => b.timesWrong - a.timesWrong || a.box - b.box)
+    .slice(0, limit);
+}

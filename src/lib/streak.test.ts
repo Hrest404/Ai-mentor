@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { effectiveStreak, isValidTimeZone, localDate, nextStreak, startOfLocalDay } from "./streak";
+import { advanceStreak, effectiveStreak, grantWeeklyFreeze, isValidTimeZone, localDate, nextStreak, startOfLocalDay, weekStart } from "./streak";
 
 describe("localDate", () => {
   it("учитывает часовой пояс на границе суток", () => {
@@ -53,5 +53,50 @@ describe("effectiveStreak", () => {
     expect(effectiveStreak({ streak: 4, lastActiveDate: "2026-11-15" }, "2026-11-16")).toBe(4);
     expect(effectiveStreak({ streak: 4, lastActiveDate: "2026-11-14" }, "2026-11-16")).toBe(0);
     expect(effectiveStreak({ streak: 0, lastActiveDate: null }, "2026-11-16")).toBe(0);
+  });
+});
+
+describe("заморозка серии", () => {
+  const state = { streak: 4, longestStreak: 4, lastActiveDate: "2026-11-13" };
+
+  it("неделя считается с понедельника", () => {
+    expect(weekStart("2026-11-16")).toBe("2026-11-16"); // понедельник
+    expect(weekStart("2026-11-22")).toBe("2026-11-16"); // воскресенье
+    expect(weekStart("2026-11-23")).toBe("2026-11-23");
+  });
+
+  it("PRO получает одну заморозку в неделю, Free ни одной, неиспользованные не копятся", () => {
+    const fresh = { streakFreezes: 0, freezeWeek: null };
+    expect(grantWeeklyFreeze(fresh, "2026-11-16", true)).toEqual({ streakFreezes: 1, freezeWeek: "2026-11-16" });
+    expect(grantWeeklyFreeze(fresh, "2026-11-16", false)).toEqual(fresh);
+    const granted = { streakFreezes: 1, freezeWeek: "2026-11-16" };
+    expect(grantWeeklyFreeze(granted, "2026-11-20", true)).toEqual(granted);
+    expect(grantWeeklyFreeze(granted, "2026-11-24", true)).toEqual({ streakFreezes: 1, freezeWeek: "2026-11-23" });
+    // потраченная заморозка на той же неделе не возвращается
+    expect(grantWeeklyFreeze({ streakFreezes: 0, freezeWeek: "2026-11-16" }, "2026-11-20", true).streakFreezes).toBe(0);
+  });
+
+  it("один пропущенный день закрывается заморозкой: серия растёт, заморозка тратится", () => {
+    const r = advanceStreak(state, "2026-11-15", 1);
+    expect(r).toMatchObject({ streak: 5, longestStreak: 5, freezes: 0, freezeUsed: true });
+  });
+
+  it("без заморозки пропуск обнуляет серию", () => {
+    expect(advanceStreak(state, "2026-11-15", 0)).toMatchObject({ streak: 1, freezeUsed: false });
+  });
+
+  it("два пропущенных дня заморозка не спасает и не тратится", () => {
+    expect(advanceStreak(state, "2026-11-16", 1)).toMatchObject({ streak: 1, freezes: 1, freezeUsed: false });
+  });
+
+  it("обычное продление и тот же день заморозку не трогают", () => {
+    expect(advanceStreak(state, "2026-11-14", 1)).toMatchObject({ streak: 5, freezes: 1, freezeUsed: false });
+    expect(advanceStreak(state, "2026-11-13", 1)).toMatchObject({ streak: 4, freezes: 1, freezeUsed: false });
+  });
+
+  it("effectiveStreak сохраняет серию после одного пропуска, пока есть заморозка", () => {
+    expect(effectiveStreak({ ...state, streakFreezes: 1 }, "2026-11-15")).toBe(4);
+    expect(effectiveStreak({ ...state, streakFreezes: 0 }, "2026-11-15")).toBe(0);
+    expect(effectiveStreak({ ...state, streakFreezes: 1 }, "2026-11-16")).toBe(0);
   });
 });

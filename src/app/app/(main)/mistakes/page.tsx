@@ -50,7 +50,7 @@ export default async function MistakesPage({
 }) {
   const sp = await searchParams;
   const user = await requireUser();
-  const { profile } = await getAccount(user.id);
+  const { profile, plan } = await getAccount(user.id);
 
   const rows = await db.select().from(mistakes).where(eq(mistakes.userId, user.id));
   const now = new Date();
@@ -126,7 +126,12 @@ export default async function MistakesPage({
 
       {weak.length > 0 && (
         <section className="flex flex-col gap-3">
-          <h2 className="text-2xl">Слабые места</h2>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-2xl">Слабые места</h2>
+            <ButtonLink href="/app/mistakes/review?mode=weak" variant="secondary">
+              Повторить слабые темы{plan !== "pro" && " (PRO)"}
+            </ButtonLink>
+          </div>
           <ul className="flex flex-col">
             {weak.map((w) => (
               <li key={w.tag} className="border-b border-line first:border-t">

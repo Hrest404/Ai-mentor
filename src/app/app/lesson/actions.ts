@@ -4,7 +4,7 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 import type { BatchItem } from "drizzle-orm/batch";
 import { z } from "zod";
 import { db } from "@/db";
-import { attempts, lessonProgress, mistakes, profiles, userStats } from "@/db/schema";
+import { attempts, lessonProgress, mistakes, profiles, userStats, xpEvents } from "@/db/schema";
 import { verifyLessonToken } from "@/lib/access-token";
 import { answerToText, checkAnswer } from "@/lib/answers";
 import { exercisesOfLesson, getExercise, getLesson, getTopic, lessonsOfTopic, nextTopic } from "@/lib/course-index";
@@ -12,7 +12,7 @@ import { PASS_SCORE, xpForResult } from "@/lib/course-state";
 import { chargeSeconds, isOverGrace, isPracticeExhausted, lessonAllowedForPlan } from "@/lib/limits";
 import { loadCourseView } from "@/lib/progress";
 import { getAccount, requireUser } from "@/lib/session";
-import { isValidTimeZone, localDate, nextStreak } from "@/lib/streak";
+import { advanceStreak, grantWeeklyFreeze, isValidTimeZone, localDate } from "@/lib/streak";
 import { finishPracticeCharge, getUsage, practiceChargeQuery } from "@/lib/usage";
 
 type Batch = [BatchItem<"sqlite">, ...BatchItem<"sqlite">[]];
@@ -139,24 +139,28 @@ async function activityQueries(opts: {
   xpGain: number;
   tz: string | undefined;
   profileTimezone: string;
+  isPro: boolean;
 }): Promise<{ queries: BatchItem<"sqlite">[]; streak: number; xp: number }> {
   const { userId, xpGain, tz } = opts;
   const timezone = tz && isValidTimeZone(tz) ? tz : opts.profileTimezone;
   const [stats] = await db.select().from(userStats).where(eq(userStats.userId, userId));
-  const current = stats ?? { xp: 0, streak: 0, longestStreak: 0, lastActiveDate: null, streakFreezes: 0 };
+  const current = stats ?? { xp: 0, streak: 0, longestStreak: 0, lastActiveDate: null, streakFreezes: 0, freezeWeek: null };
   const today = localDate(new Date(), timezone);
-  const next = nextStreak(current, today);
+  const granted = grantWeeklyFreeze(current, today, opts.isPro);
+  const next = advanceStreak(current, today, granted.streakFreezes);
+  const freezeFields = { streakFreezes: next.freezes, freezeWeek: granted.freezeWeek };
   const xp = current.xp + xpGain;
 
   const queries: BatchItem<"sqlite">[] = [
     db
       .insert(userStats)
-      .values({ userId, xp, streak: next.streak, longestStreak: next.longestStreak, lastActiveDate: next.lastActiveDate })
+      .values({ userId, xp, streak: next.streak, longestStreak: next.longestStreak, lastActiveDate: next.lastActiveDate, ...freezeFields })
       .onConflictDoUpdate({
         target: userStats.userId,
-        set: { xp, streak: next.streak, longestStreak: next.longestStreak, lastActiveDate: next.lastActiveDate },
+        set: { xp, streak: next.streak, longestStreak: next.longestStreak, lastActiveDate: next.lastActiveDate, ...freezeFields },
       }),
   ];
+  if (xpGain > 0) queries.push(db.insert(xpEvents).values({ userId, amount: xpGain }));
   if (timezone !== opts.profileTimezone) {
     queries.push(db.update(profiles).set({ timezone }).where(eq(profiles.userId, userId)));
   }
@@ -227,7 +231,7 @@ export async function finishLesson(raw: unknown): Promise<FinishResponse> {
   const status = wasCompleted || passed ? "completed" : "in_progress";
   const xpGain = xpForResult(lesson.xpReward, score, prevBest);
 
-  const activity = await activityQueries({ userId: user.id, xpGain, tz, profileTimezone: profile.timezone });
+  const activity = await activityQueries({ userId: user.id, xpGain, tz, profileTimezone: profile.timezone, isPro: plan === "pro" });
   const queries: Batch = [
     db
       .insert(lessonProgress)
@@ -299,7 +303,7 @@ export async function completeTheory(raw: unknown): Promise<TheoryResponse> {
 
   const prev = progress.get(lessonId);
   const xpGain = xpForResult(lesson.xpReward, 100, prev?.bestScore ?? null);
-  const activity = await activityQueries({ userId: user.id, xpGain, tz, profileTimezone: profile.timezone });
+  const activity = await activityQueries({ userId: user.id, xpGain, tz, profileTimezone: profile.timezone, isPro: plan === "pro" });
 
   const queries: Batch = [
     db

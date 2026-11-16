@@ -54,15 +54,66 @@ export interface StreakState {
   lastActiveDate: string | null;
 }
 
-/** Серия после активности сегодня: тот же день ничего не меняет, вчера продлевает, пропуск начинает заново. */
-export function nextStreak(state: StreakState, today: string): StreakState {
-  if (state.lastActiveDate === today) return state;
-  const streak = state.lastActiveDate === previousDate(today) ? state.streak + 1 : 1;
-  return { streak, longestStreak: Math.max(state.longestStreak, streak), lastActiveDate: today };
+const twoDaysBefore = (date: string) => previousDate(previousDate(date));
+
+/** Понедельник недели, в которую попадает дата (YYYY-MM-DD). Неделя считается с понедельника. */
+export function weekStart(date: string): string {
+  const day = new Date(Date.parse(`${date}T00:00:00Z`)).getUTCDay(); // 0 = воскресенье
+  const back = (day + 6) % 7;
+  return new Date(Date.parse(`${date}T00:00:00Z`) - back * DAY_MS).toISOString().slice(0, 10);
 }
 
-/** Серия для показа: если не занимались ни вчера, ни сегодня, она уже прервана. */
-export function effectiveStreak(state: Pick<StreakState, "streak" | "lastActiveDate">, today: string): number {
+/** Заморозка серии: PRO получает одну на неделю, неиспользованные не копятся. */
+export function grantWeeklyFreeze(
+  state: { streakFreezes: number; freezeWeek: string | null },
+  today: string,
+  isPro: boolean,
+): { streakFreezes: number; freezeWeek: string | null } {
+  const week = weekStart(today);
+  if (!isPro || state.freezeWeek === week) return state;
+  return { streakFreezes: 1, freezeWeek: week };
+}
+
+export interface AdvancedStreak extends StreakState {
+  freezes: number;
+  /** Заморозка закрыла пропущенный день. */
+  freezeUsed: boolean;
+}
+
+/**
+ * Серия после активности сегодня: тот же день ничего не меняет, вчера продлевает, пропуск начинает заново.
+ * Если пропущен ровно один день и есть заморозка, она закрывает его: серия продолжается, заморозка тратится.
+ */
+export function advanceStreak(state: StreakState, today: string, freezes: number): AdvancedStreak {
+  if (state.lastActiveDate === today) return { ...state, freezes, freezeUsed: false };
+  const missedOne = state.lastActiveDate === twoDaysBefore(today);
+  const useFreeze = missedOne && freezes > 0 && state.streak > 0;
+  const continues = state.lastActiveDate === previousDate(today) || useFreeze;
+  const streak = continues ? state.streak + 1 : 1;
+  return {
+    streak,
+    longestStreak: Math.max(state.longestStreak, streak),
+    lastActiveDate: today,
+    freezes: useFreeze ? freezes - 1 : freezes,
+    freezeUsed: useFreeze,
+  };
+}
+
+/** Серия после активности сегодня без заморозок. */
+export function nextStreak(state: StreakState, today: string): StreakState {
+  const { streak, longestStreak, lastActiveDate } = advanceStreak(state, today, 0);
+  return { streak, longestStreak, lastActiveDate };
+}
+
+/**
+ * Серия для показа: если не занимались ни вчера, ни сегодня, она уже прервана.
+ * Пропущенный вчерашний день не рвёт серию, пока есть заморозка.
+ */
+export function effectiveStreak(
+  state: Pick<StreakState, "streak" | "lastActiveDate"> & { streakFreezes?: number },
+  today: string,
+): number {
   if (state.lastActiveDate === today || state.lastActiveDate === previousDate(today)) return state.streak;
+  if (state.lastActiveDate === twoDaysBefore(today) && (state.streakFreezes ?? 0) > 0) return state.streak;
   return 0;
 }
